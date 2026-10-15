@@ -58,7 +58,7 @@ Never change a contract silently. A contract change needs: (a) the doc updated i
 
 ## Core domain vocabulary (use these exact names everywhere)
 - **Building** → has many **Floors**
-- **Floor** → has many **Nodes** (rooms, junctions, doors, landmarks)
+- **Floor** → has many **Nodes** (room entrances, junctions, doors, landmarks); a **Room** is a named destination linked to a Node
 - **Node** → a point on a floor with `x`, `y`
 - **Edge** → a walkable connection between two nodes, with `distance` and `accessible` flag
 - **Connector** → an edge between floors (`STAIRS`, `ELEVATOR`, `RAMP`)
@@ -314,9 +314,9 @@ docker-compose.yml
 ```
 
 ## Schema rules
-1. Tables (initial): `buildings`, `floors`, `nodes`, `edges`, `connectors` (or edges with a connector type), `obstacles`.
+1. Tables (initial): `buildings`, `floors`, `rooms`, `nodes`, `edges`, `obstacles`. Store cross-floor connector type (`STAIRS`, `ELEVATOR`, `RAMP`) on the relevant Edge; do not create a separate connectors table in the initial schema.
 2. Use `snake_case` names, plural table names, `id` primary keys (`BIGINT` identity or `UUID` — pick one and be consistent).
-3. Add foreign keys with explicit `ON DELETE` behavior, `NOT NULL` where appropriate, and `CHECK` constraints (e.g. `distance > 0`).
+3. Add foreign keys with explicit `ON DELETE` behavior, `NOT NULL` where appropriate, and `CHECK` constraints for valid persisted distances and coordinate values; keep engine-level tests for zero-length edges as specified in Part 4.
 4. Index foreign keys and anything used for lookup (`nodes.floor_id`, `edges.from_node_id`, `edges.to_node_id`).
 5. **Migrations are append-only.** Never edit a migration that has been merged; add a new one. Name: `V<n>__<description>.sql`.
 6. Every migration must run cleanly on an empty database and on top of the previous version.

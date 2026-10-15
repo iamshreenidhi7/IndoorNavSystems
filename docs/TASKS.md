@@ -48,15 +48,16 @@
 - [ ] (P4) Set up branch protection on `main`: pull requests required, at least one review, CI must pass
 - [ ] (P4) Add `.gitignore`, `README.md`, PR template and issue templates
 - [ ] (ALL) Write `docs/ARCHITECTURE.md`: modules, responsibilities, data flow, coding rules
-- [ ] (ALL) Define the shared data model in `docs/DATABASE.md`: Building, Floor, Node, Edge, Room, Obstacle, Connector (stairs/elevator)
+- [ ] (ALL) Define the shared data model in `docs/DATABASE.md`: Building, Floor, Room, Node, Edge, Obstacle and Connector edge types (`STAIRS`, `ELEVATOR`, `RAMP`)
 - [ ] (P2 + P1) Write `docs/API.md` with request and response examples for every endpoint:
-  - `GET /buildings`
-  - `GET /buildings/{id}/floors`
-  - `GET /buildings/{id}/floors/{floorId}/map`
-  - `GET /rooms/search?q=`
-  - `POST /routes` (start, destination, accessibility options)
-  - `POST /obstacles` / `DELETE /obstacles/{id}`
-- [ ] (P2 + P3) Define the engine interface (Java interface or JAR boundary) the backend will call, for example `RouteResult findRoute(RouteRequest request)`
+  - `GET /api/v1/buildings`
+  - `GET /api/v1/buildings/{buildingId}/floors`
+  - `GET /api/v1/buildings/{buildingId}/floors/{floorId}/map`
+  - `GET /api/v1/buildings/{buildingId}/rooms?query=`
+  - `POST /api/v1/routes` (`buildingId`, `startNodeId`, `endNodeId`, `accessibleOnly`)
+  - `GET /api/v1/obstacles?buildingId=`
+  - `POST /api/v1/obstacles` / `DELETE /api/v1/obstacles/{obstacleId}`
+- [ ] (P2 + P3) Define the engine interface (Java interface or JAR boundary) the backend will call, for example `RouteResult findRoute(Graph graph, RouteRequest request)`
 - [ ] (P1) Initialize the Flutter project and confirm it runs on Android (and on iOS if a Mac is available)
 - [ ] (P2) Initialize the Spring Boot project (Java 21, Maven or Gradle) with a health endpoint
 - [ ] (P3) Initialize the engine as a standalone Java module with a unit-test setup
@@ -67,7 +68,7 @@
 ### Exit criteria
 
 - [ ] All four projects build locally and in CI
-- [ ] `API.md` and `ARCHITECTURE.md` are reviewed and approved by everyone
+- [ ] `docs/API.md` and `docs/ARCHITECTURE.md` are reviewed and approved by everyone
 - [ ] Each person has a clear module they own
 
 ---
@@ -80,7 +81,7 @@
 
 - [ ] Set up app structure (feature folders, theme, Material 3)
 - [ ] Add Riverpod, Dio, GoRouter and wire them up
-- [ ] Create typed data models matching `API.md` (Freezed/JSON serialization optional)
+- [ ] Create typed data models matching `docs/API.md` (Freezed/JSON serialization optional)
 - [ ] Build a mock API service returning hard-coded JSON
 - [ ] Build screens as static/mock versions:
   - Home / building selection
@@ -109,9 +110,9 @@
 
 ### P4 — Database, DevOps, testing
 
-- [ ] Design the PostgreSQL schema and ER diagram
-- [ ] Set up Flyway (or Liquibase) migrations
-- [ ] Create tables: buildings, floors, nodes, edges, rooms, obstacles, connectors
+- [ ] Design the PostgreSQL schema and ER diagram for buildings, floors, rooms, nodes, edges and obstacles; store connector type on cross-floor edges
+- [ ] Set up Flyway migrations
+- [ ] Create tables: buildings, floors, rooms, nodes, edges and obstacles; store connector type on cross-floor edges
 - [ ] Write seed data for one sample building with 2–3 floors
 - [ ] Document one-command local setup in the README
 - [ ] Extend CI: run tests and report coverage for each module
@@ -134,7 +135,7 @@
 - [ ] Replace mock service with real Dio calls (configurable base URL per environment)
 - [ ] Render real floor maps from backend data (rooms, corridors, doors)
 - [ ] Implement room search with debouncing and result selection
-- [ ] Let the user pick start and destination (search, tap on map, or "current location" placeholder)
+- [ ] Let the user pick start and destination (search, tap on map, )
 - [ ] Draw the computed route on the map
 - [ ] Show turn-by-turn instruction list
 - [ ] Add loading, empty and error states for every screen
@@ -144,7 +145,7 @@
 
 - [ ] Connect to PostgreSQL with JPA/Hibernate and repositories
 - [ ] Replace in-memory data with database queries
-- [ ] Implement `POST /routes`: validate input, load the graph, call the engine, map the result to a DTO
+- [ ] Implement `POST /api/v1/routes`: validate input, load the graph, call the engine, map the result to a DTO
 - [ ] Implement room search (name, number, type)
 - [ ] Add caching for building graphs (for example Caffeine) to avoid reloading on each request
 - [ ] Add logging and request tracing
@@ -171,7 +172,7 @@
 
 - [ ] A user can search for a room, pick a destination and see a correct route on one floor
 - [ ] Backend tests run against a real PostgreSQL instance in CI
-- [ ] Route response time is acceptable on the seed building (target under 500 ms)
+- [ ] Route API response time is under 1 second on the seed building under typical expected load
 
 ---
 
@@ -186,7 +187,7 @@
 - [ ] (P1) Verify the app on iOS simulator (requires macOS and Xcode)
 - [ ] (P4) Write end-to-end tests: app → API → engine → database
 - [ ] (P4) Set up a shared dev environment (hosted or Docker-based) everyone can reach
-- [ ] (ALL) Fix contract mismatches found during integration and update `API.md`
+- [ ] (ALL) Fix contract mismatches found during integration and update `docs/API.md`
 - [ ] (ALL) Hold an integration review: walk through three or four full user flows together
 - [ ] (P2) Review API error handling against what the app actually needs
 - [ ] (P1) Handle offline and slow-network cases gracefully
@@ -196,7 +197,7 @@
 - [ ] Full flow works on a real Android device
 - [ ] Full flow works on iOS simulator
 - [ ] No mock data is used in the integrated build
-- [ ] `API.md` matches the real implementation
+- [ ] `docs/API.md` matches the real implementation
 
 ---
 
@@ -223,7 +224,7 @@
 ### Accessibility options
 
 - [ ] (P3) Add route options: avoid stairs, prefer elevators, minimum corridor width
-- [ ] (P2) Accept accessibility parameters in `POST /routes`
+- [ ] (P2) Accept accessibility parameters in `POST /api/v1/routes`
 - [ ] (P1) Add a route preferences screen
 - [ ] (P1) Check screen-reader labels and text scaling
 
@@ -256,7 +257,7 @@
 ### Quality
 
 - [ ] (P1) Widget tests and integration tests for the main flows
-- [ ] (P2) Unit tests for services, controller tests, and contract tests against `API.md`
+- [ ] (P2) Unit tests for services, controller tests, and contract tests against `docs/API.md`
 - [ ] (P3) Property-based or randomized tests comparing A* and Dijkstra results
 - [ ] (P4) Test coverage thresholds enforced in CI
 - [ ] (ALL) Manual test pass on at least two Android devices and one iPhone
@@ -264,7 +265,7 @@
 ### Performance
 
 - [ ] (P3) Profile the engine on large graphs (thousands of nodes) and optimize hot spots
-- [ ] (P2) Load test `POST /routes` and tune caching and DB connection pools
+- [ ] (P2) Load test `POST /api/v1/routes` and tune caching and DB connection pools
 - [ ] (P1) Profile map rendering and fix jank on lower-end devices
 
 ### Security and reliability
@@ -312,7 +313,7 @@
 
 ### Documentation and handover
 
-- [ ] (ALL) Finalize `README.md`, `ARCHITECTURE.md`, `API.md`, `DATABASE.md`
+- [ ] (ALL) Finalize `README.md`, `docs/ARCHITECTURE.md`, `docs/API.md`, `docs/DATABASE.md`
 - [ ] (P4) Write a deployment and operations guide
 - [ ] (P4) Add a guide for onboarding a new building (importing a floor plan)
 - [ ] (ALL) Prepare the project demo and a short presentation
@@ -330,7 +331,7 @@
 
 - Work only inside your own module unless a cross-module change is agreed and recorded in the docs.
 - Every change goes through a feature branch and a pull request; nobody pushes directly to `main`.
-- Update `API.md` **before** changing an endpoint, not after.
+- Update `docs/API.md` **before** changing an endpoint, not after.
 - Give every AI coding agent `docs/ARCHITECTURE.md` and `docs/API.md` as context, and tell it which module it may edit.
 - Hold a short sync (15 minutes, two or three times a week) to unblock dependencies between modules.
 - Review each other's AI-generated code; do not merge code nobody on the team understands.
@@ -347,6 +348,6 @@
 ## Risks to watch
 
 - **iOS builds need macOS and Xcode.** Confirm that at least one team member has access to a Mac by Phase 3.
-- **API drift.** Mitigated by updating `API.md` first and running contract tests.
+- **API drift.** Mitigated by updating `docs/API.md` first and running contract tests.
 - **Floor-plan data quality.** Wrong coordinates or disconnected graphs cause bad routes; validate graphs on import.
 - **Scope creep.** Treat the optional enhancements in Phase 4 as stretch goals; protect Phases 3 and 5.
