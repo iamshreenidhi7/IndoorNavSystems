@@ -121,8 +121,8 @@ One app, one codebase for Android and iOS, backed by a routing engine that alway
 
 | ID | Requirement | Priority |
 |---|---|---|
-| D-1 | PostgreSQL schema for buildings, floors, rooms, graph nodes, edges and obstacles. | Must |
-| D-2 | Versioned migrations (e.g. Flyway or Liquibase). **(Assumption)** | Must |
+| D-1 | PostgreSQL schema for buildings, floors, rooms, nodes, edges and obstacles; connector type is stored on cross-floor edges. | Must |
+| D-2 | Versioned migrations (e.g. Flyway). **(Assumption)** | Must |
 | D-3 | Sample dataset for at least one building with multiple floors. | Must |
 | D-4 | `docker-compose.yml` to start backend and database with one command. | Must |
 | D-5 | GitHub Actions pipeline running build and tests on every pull request. | Must |
@@ -205,53 +205,70 @@ indoor-navigation/
 | **Building** | id, name, address/description |
 | **Floor** | id, building_id, level number, label, map asset reference |
 | **Room** | id, floor_id, name, number, category, linked node_id, map position |
-| **Node** | id, floor_id, x, y, type (corridor, door, stairs, lift, ramp, room entrance) |
-| **Edge** | id, from_node_id, to_node_id, weight (distance), is_accessible, is_bidirectional |
+| **Node** | id, floor_id, x, y, type (corridor, door, landing, landmark, room entrance) |
+| **Edge** | id, from_node_id, to_node_id, distance, accessible, is_bidirectional, optional connector_type (`STAIRS`, `ELEVATOR`, `RAMP`) |
 | **Obstacle** | id, node_id or edge_id, reason, active flag, created/cleared timestamps |
 
-Floor connectors (stairs, lifts, ramps) are nodes of the matching type, linked by edges between floors. Accessible routing excludes edges where `is_accessible = false`.
+Floor connectors (`STAIRS`, `ELEVATOR`, `RAMP`) are represented as cross-floor Edges with a `connector_type`. Accessible routing excludes Edges where `accessible = false` and excludes `STAIRS` connectors.
 
 ---
 
 ## 9. API Contract (Draft)
 
-The team should agree on this before coding so the mobile app can use mock responses while the backend is built. Final version lives in `docs/API.md`.
+The REST API is versioned under `/api/v1`. The final authoritative request/response definitions live in `docs/API.md`; mobile mocks, backend DTOs, tests, and this summary must match it.
 
 | Method | Endpoint | Purpose |
 |---|---|---|
-| GET | `/api/buildings` | List buildings |
-| GET | `/api/buildings/{id}/floors` | List floors and map data |
-| GET | `/api/buildings/{id}/rooms?query=` | Search rooms |
-| POST | `/api/routes` | Calculate a route |
-| GET | `/api/obstacles?buildingId=` | List active obstacles |
-| POST | `/api/obstacles` | Create an obstacle (admin) |
-| DELETE | `/api/obstacles/{id}` | Clear an obstacle (admin) |
+| GET | `/api/v1/buildings` | List buildings |
+| GET | `/api/v1/buildings/{buildingId}/floors` | List floors for a building |
+| GET | `/api/v1/buildings/{buildingId}/floors/{floorId}/map` | Get floor map data |
+| GET | `/api/v1/buildings/{buildingId}/rooms?query=` | Search rooms by name or number |
+| POST | `/api/v1/routes` | Calculate a route |
+| GET | `/api/v1/obstacles?buildingId=` | List active obstacles |
+| POST | `/api/v1/obstacles` | Create/report an obstacle |
+| DELETE | `/api/v1/obstacles/{obstacleId}` | Clear an obstacle |
 
-**Route request (example)**
+**Route request example**
+
 ```json
 {
   "buildingId": 1,
-  "fromRoomId": 101,
-  "toRoomId": 342,
+  "startNodeId": 101,
+  "endNodeId": 342,
   "accessibleOnly": false
 }
 ```
 
-**Route response (example)**
+The app resolves a selected Room to its linked Node before requesting a route. `accessibleOnly` is `false` by default.
+
+**Route response example**
+
 ```json
 {
   "found": true,
   "distanceMeters": 128.5,
   "estimatedSeconds": 110,
   "path": [
-    { "nodeId": 10, "floor": 1, "x": 12.0, "y": 4.5, "type": "room_entrance" },
-    { "nodeId": 24, "floor": 1, "x": 30.0, "y": 4.5, "type": "lift" },
-    { "nodeId": 124, "floor": 3, "x": 30.0, "y": 4.5, "type": "lift" }
+    { "nodeId": 10, "floorId": 1, "x": 12.0, "y": 4.5, "type": "ROOM_ENTRANCE" },
+    { "nodeId": 24, "floorId": 1, "x": 30.0, "y": 4.5, "type": "LANDING" },
+    { "nodeId": 124, "floorId": 3, "x": 30.0, "y": 4.5, "type": "LANDING" }
   ],
   "steps": [
-    "Walk along the corridor to the lift",
-    "Take the lift to floor 3"
+    "Walk along the corridor to the elevator",
+    "Take the elevator to floor 3"
   ]
+}
+```
+
+Invalid input returns HTTP `400`; an unknown building or node returns `404`; a valid request for which no route exists returns `422`. Error responses use the shared shape:
+
+```json
+{
+  "timestamp": "2026-01-01T12:00:00Z",
+  "status": 422,
+  "error": "ROUTE_NOT_FOUND",
+  "message": "No route available with the given constraints.",
+  "path": "/api/v1/routes"
 }
 ```
 
@@ -273,23 +290,24 @@ The team should agree on this before coding so the mobile app can use mock respo
 
 ---
 
-## 11. Milestones **(Assumption: durations to be set by the team)**
+## 11. Milestones (12-week planning baseline; durations are assumptions)
 
-| Phase | Deliverables |
-|---|---|
-| **0. Foundations** | Repository, `ARCHITECTURE.md`, `API.md`, `DATABASE.md`, agreed route API, Docker Compose, CI skeleton |
-| **1. Parallel build** | Flutter app against mock API; backend with mock engine; engine with Dijkstra and unit tests; schema and sample data |
-| **2. Integration** | Real engine wired into backend; app connected to real API; end-to-end route on one floor |
-| **3. Multi-floor and constraints** | Multi-floor routing, accessible routing, obstacle management, obstacle display in app |
-| **4. Polish and release** | A\* optimization, error and offline states, test coverage, deployment, release builds |
+| Phase | Timing | Deliverables |
+|---|---|---|
+| 0. Setup and contracts | Week 1 | Repository, reviewed architecture/API/database contracts, Docker Compose and CI skeleton |
+| 1. Foundations | Weeks 2–3 | Mobile mock flow, backend stub engine, Dijkstra baseline, schema and seed data |
+| 2. Core features | Weeks 4–6 | Database-backed single-floor routing end to end |
+| 3. Integration | Week 7 | App, API, engine and database connected with contract tests |
+| 4. Advanced features | Weeks 8–9 | Multi-floor routing, obstacles, accessibility and A* |
+| 5. Testing and hardening | Weeks 10–11 | Reliability, performance, security and UX polish |
+| 6. Deployment and release | Week 12 | Deployed backend/database and installable Android/iOS builds |
 
 ---
-
 ## 12. Success Metrics **(Assumption)**
 
 - A user can find a room and view a route in under 30 seconds from opening the app.
 - Routes are correct for 100% of test cases in the engine test suite (single-floor, multi-floor, blocked, accessible).
-- Route API responds in under 1 second for the sample buildings.
+- Route API responds in under 1 second for the sample building under typical expected load.
 - The same app build flow works on both Android and iOS with no platform-specific frontend code for core features.
 - CI passes on every merged pull request.
 
