@@ -13,10 +13,22 @@ If they conflict, the module section wins for module-internal details; Part 1 wi
 
 ---
 
+## Platform scope and sample implementation
+
+This is a general-purpose indoor navigation and path optimization platform, not a mall-only application.
+
+- **Supported environment types:** shopping malls, apartment buildings, office buildings, hospitals, educational buildings and similar indoor environments.
+- **Initial demonstration:** a fictional multi-floor shopping mall with stores, restaurants, washrooms, entrances, lifts, stairs, ramps and temporary closures.
+- **Environment-neutral core:** routing operates on nodes, edges, weights, floor connections, accessibility flags and obstacles. It must not contain mall-specific business rules.
+- **Configurable destinations:** the existing `rooms` table/API model is retained for compatibility and represents any named destination or point of interest. Use `category` to distinguish store, office, apartment unit, meeting room, washroom, reception, etc.
+- **Multi-building complexes:** colonies, campuses and large complexes may require a future parent `site/complex` entity and explicit outdoor or inter-building links. This is an extension beyond the current single-building API contract and must be designed as a documented contract/schema change before implementation.
+- **MVP limitation:** users select their start point manually; live indoor positioning and outdoor navigation are not part of the initial MVP unless the requirements are explicitly expanded.
+
+
 # Part 1: Project-wide rules
 
 ## Project summary
-Indoor navigation app: a user picks a start and destination inside a multi-floor building and sees the shortest route, with accessibility and obstacle awareness.
+Environment-independent indoor navigation and path optimization platform. A user picks a start and destination in a configured indoor environment and sees the shortest usable route, with accessibility and obstacle awareness. The first sample dataset is a multi-floor shopping mall; do not hard-code mall-specific assumptions into shared models or routing logic.
 
 ## Architecture
 ```
@@ -57,7 +69,7 @@ indoor-navigation/
 Never change a contract silently. A contract change needs: (a) the doc updated in the same PR, (b) the PR labeled `contract-change`, (c) every affected module's owner tagged as reviewer.
 
 ## Core domain vocabulary (use these exact names everywhere)
-- **Building** → has many **Floors**
+- **Building** → a navigable indoor site (for example a mall, apartment building, office block, hospital or campus); has many **Floors**
 - **Floor** → has many **Nodes** (room entrances, junctions, doors, landmarks); a **Room** is a named destination linked to a Node
 - **Node** → a point on a floor with `x`, `y`
 - **Edge** → a walkable connection between two nodes, with `distance` and `accessible` flag
@@ -102,7 +114,7 @@ Never change a contract silently. A contract change needs: (a) the doc updated i
 *Applies to this module only. Part 1 rules also apply.*
 
 ## Scope
-Single Flutter codebase for Android and iOS: building/floor selection, room search, indoor map rendering, route display, and navigation UI. No business logic that belongs to the backend or engine — the app never computes routes itself.
+Single Flutter codebase for Android and iOS: building/floor selection, destination search, indoor map rendering, route display, and navigation UI. No business logic that belongs to the backend or engine — the app never computes routes itself.
 
 ## Stack
 - Flutter (stable channel) + Dart, Material 3

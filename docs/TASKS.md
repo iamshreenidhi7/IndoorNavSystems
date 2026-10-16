@@ -1,4 +1,4 @@
-# Indoor Navigation — Project Tasks
+# Indoor Navigation & Path Optimization — Project Tasks
 
 **Stack:** Flutter (Dart) · Java 21 + Spring Boot · Standalone Java pathfinding engine · PostgreSQL · Docker · GitHub Actions
 
@@ -113,7 +113,7 @@
 - [ ] Design the PostgreSQL schema and ER diagram for buildings, floors, rooms, nodes, edges and obstacles; store connector type on cross-floor edges
 - [ ] Set up Flyway migrations
 - [ ] Create tables: buildings, floors, rooms, nodes, edges and obstacles; store connector type on cross-floor edges
-- [ ] Write seed data for one sample building with 2–3 floors
+- [ ] Write seed data for one sample multi-floor shopping mall with 2–3 floors, stores, restaurants, amenities and vertical connectors; keep the schema environment-neutral
 - [ ] Document one-command local setup in the README
 - [ ] Extend CI: run tests and report coverage for each module
 
@@ -134,7 +134,7 @@
 
 - [ ] Replace mock service with real Dio calls (configurable base URL per environment)
 - [ ] Render real floor maps from backend data (rooms, corridors, doors)
-- [ ] Implement room search with debouncing and result selection
+- [ ] Implement destination search with debouncing and result selection
 - [ ] Let the user pick start and destination (search, tap on map, )
 - [ ] Draw the computed route on the map
 - [ ] Show turn-by-turn instruction list
@@ -146,7 +146,7 @@
 - [ ] Connect to PostgreSQL with JPA/Hibernate and repositories
 - [ ] Replace in-memory data with database queries
 - [ ] Implement `POST /api/v1/routes`: validate input, load the graph, call the engine, map the result to a DTO
-- [ ] Implement room search (name, number, type)
+- [ ] Implement destination search (name, number, type)
 - [ ] Add caching for building graphs (for example Caffeine) to avoid reloading on each request
 - [ ] Add logging and request tracing
 
@@ -161,7 +161,7 @@
 
 ### P4 — Database, DevOps, testing
 
-- [ ] Create realistic seed data for the target building (real floor plan coordinates if available)
+- [ ] Create realistic seed data for the sample mall, including stores, restaurants, amenities, entrances, lifts, stairs and walkable paths (real floor plan coordinates if available)
 - [ ] Write a tool or script to import floor-plan data (CSV/JSON → nodes and edges)
 - [ ] Add database indexes for search and graph queries
 - [ ] Add integration tests with Testcontainers (backend + PostgreSQL)
@@ -170,7 +170,7 @@
 
 ### Exit criteria
 
-- [ ] A user can search for a room, pick a destination and see a correct route on one floor
+- [ ] A user can search for a destination, pick a destination and see a correct route on one floor
 - [ ] Backend tests run against a real PostgreSQL instance in CI
 - [ ] Route API response time is under 1 second on the seed building under typical expected load
 
