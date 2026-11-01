@@ -1,0 +1,18 @@
+# Analyzer and linter configuration (AGENTS.md Section 5.3: "analyzer clean;
+# formatter applied"). Starts from Flutter's own recommended rules; add
+# project-specific rules here only when a real violation shows the default
+# set is not enough, not speculatively.
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+
+linter:
+  rules:
+    # AGENTS.md 5.3: sound null safety; avoid unsound patterns.
+    avoid_dynamic_calls: true
+    # AGENTS.md 5.1: no unused imports/parameters/dead code.
+    unnecessary_statements: true

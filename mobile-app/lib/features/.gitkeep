@@ -1,0 +1,6 @@
+Placeholder so git tracks this empty directory. Feature folders
+(buildings, floors, search, routing, map, settings, auth, obstacles_admin),
+each with data/domain/application/presentation subfolders, are added one at
+a time starting Phase 12, not pre-created speculatively (AGENTS.md 5.1: "no
+speculative abstractions"). Delete this file when the first feature folder
+is added.
