@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Person 3 (algorithm engine) module.
+
+  This module builds standalone today because the repository does not yet
+  have the root parent POM described in ARCHITECTURE.md Section 4 and
+  IMPLEMENTATION_PLAN.md Phase 1 (owned by Person 4). Per ARCHITECTURE.md
+  Section 3, this module has no dependency on the backend or the database,
+  so it can be built and tested in isolation. When Phase 1 lands, this
+  file's <groupId>/<version> should be replaced by inheritance from the
+  root parent POM and algorithm-engine added to its <modules> list; no
+  source code changes are expected at that point.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.indoornav</groupId>
+  <artifactId>algorithm-engine</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+  <packaging>jar</packaging>
+
+  <name>Indoor Navigation Algorithm Engine</name>
+  <description>
+    In-memory pathfinding engine (graph model, Dijkstra, A*, cost models).
+    Owner: Person 3. Depends on the JDK only (ARCHITECTURE.md Section 5.1);
+    must never depend on Spring, JPA, Jackson, servlet or database classes
+    (AGENTS.md Section 7).
+  </description>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <maven.compiler.release>21</maven.compiler.release>
+    <junit.jupiter.version>5.11.4</junit.jupiter.version>
+    <maven.compiler.plugin.version>3.13.0</maven.compiler.plugin.version>
+    <maven.surefire.plugin.version>3.3.0</maven.surefire.plugin.version>
+  </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.junit</groupId>
+        <artifactId>junit-bom</artifactId>
+        <version>${junit.jupiter.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <dependencies>
+    <!-- Test only, per ARCHITECTURE.md Section 2 ("Backend tests | JUnit 5 ...")
+         and AGENTS.md Section 7 ("The engine MUST NOT depend on ... or any
+         database or HTTP class"). No main-scope dependency is declared. -->
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>${maven.compiler.plugin.version}</version>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>${maven.surefire.plugin.version}</version>
+      </plugin>
+    </plugins>
+  </build>
+</project>
