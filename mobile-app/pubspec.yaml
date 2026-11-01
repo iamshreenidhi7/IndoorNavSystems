@@ -1,0 +1,36 @@
+name: mobile_app
+description: >
+  Indoor Navigation and Path Optimization System - Flutter client
+  (Android and iOS, one codebase). See docs/ARCHITECTURE.md Section 9.
+publish_to: 'none'
+version: 0.1.0
+
+# [ASSUMPTION AA-7 applied] Pinned to Flutter 3.47.2 / Dart 3.13 (stable
+# since August 2026). Flutter 3.50 (Nov 2026 stable) formally deprecates
+# package:flutter/material.dart and package:flutter/cupertino.dart in favour
+# of the standalone material_ui / cupertino_ui packages; ARCHITECTURE.md
+# Section 2 mandates "Flutter, Dart, Material 3" via the classic import, so
+# this plan deliberately stays one release behind that split rather than
+# adopting it unprompted. Revisit this pin as a flagged decision, not a
+# silent upgrade, once the team is ready to migrate.
+environment:
+  sdk: '>=3.13.0 <4.0.0'
+  flutter: '3.47.2'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Bundled Material icon font; ships with every flutter create template.
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  # [FLAG: new dev dependency, needs AGENTS.md 8.1 approval] flutter_lints
+  # is Flutter's own recommended analyzer rule set (dev-only, no runtime
+  # footprint) and is what Phase 1.5's "analyzer options" task needs. Noted
+  # for the owner rather than assumed approved.
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
