@@ -1,5 +1,5 @@
 # Build the complete Maven reactor because backend depends on the algorithm engine.
-FROM eclipse-temurin:21-jdk AS build
+FROM eclipse-temurin:24-jdk AS build
 
 WORKDIR /workspace
 COPY pom.xml ./
@@ -12,7 +12,7 @@ COPY backend backend
 COPY database database
 RUN mvn --batch-mode --no-transfer-progress package -DskipTests -pl backend -am
 
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:24-jre
 
 RUN groupadd --system app && useradd --system --gid app --create-home app
 WORKDIR /app
