@@ -25,7 +25,8 @@ public final class AStarRouteFinder extends AbstractRouteFinder {
         }
         Map<Long, Double> costs = new HashMap<>();
         Map<Long, PreviousStep> previousSteps = new HashMap<>();
-        PriorityQueue<QueueEntry> queue = new PriorityQueue<>(Comparator.comparingDouble(QueueEntry::estimatedTotalCost));
+        PriorityQueue<QueueEntry> queue = new PriorityQueue<>(Comparator.comparingDouble(QueueEntry::estimatedTotalCost)
+                .thenComparingLong(QueueEntry::nodeId));
         boolean canUseTimeHeuristic = !hasFasterThanGeometricTimeOverride(graph, costConfiguration);
         costs.put(request.startNodeId(), 0.0);
         queue.add(new QueueEntry(

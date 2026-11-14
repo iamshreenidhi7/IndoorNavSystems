@@ -4,6 +4,7 @@ import com.indoornav.engine.model.NavigationEdge;
 import com.indoornav.engine.model.NavigationNode;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +16,7 @@ import java.util.Objects;
 public final class NavigationGraph {
     private final Map<Long, NavigationNode> nodesById;
     private final Map<Long, NavigationEdge> edgesById;
+    private final List<Long> edgeIds;
     private final Map<Long, List<Traversal>> traversalsByNodeId;
     private final Map<Long, Double> metresPerUnitByFloorId;
 
@@ -24,6 +26,7 @@ public final class NavigationGraph {
             Map<Long, Double> metresPerUnitByFloorId) {
         this.nodesById = indexNodes(nodes);
         this.edgesById = indexEdges(edges);
+        this.edgeIds = edgesById.keySet().stream().sorted().toList();
         this.metresPerUnitByFloorId = copyAndValidateFloorScales(metresPerUnitByFloorId);
         validateNodeFloorScales();
         validateEdgeDistances();
@@ -39,7 +42,7 @@ public final class NavigationGraph {
     }
 
     public List<Long> edgeIds() {
-        return List.copyOf(edgesById.keySet());
+        return edgeIds;
     }
 
     public List<Traversal> traversalsFrom(long nodeId) {
@@ -118,7 +121,8 @@ public final class NavigationGraph {
 
     private Map<Long, List<Traversal>> buildTraversals() {
         Map<Long, List<Traversal>> mutable = new HashMap<>();
-        for (NavigationEdge edge : edgesById.values()) {
+        for (long edgeId : edgeIds) {
+            NavigationEdge edge = edgesById.get(edgeId);
             addTraversal(mutable, edge.fromNodeId(), edge.toNodeId(), edge);
             if (edge.bidirectional()) {
                 addTraversal(mutable, edge.toNodeId(), edge.fromNodeId(), edge);
@@ -126,6 +130,8 @@ public final class NavigationGraph {
         }
         Map<Long, List<Traversal>> immutable = new HashMap<>();
         for (Map.Entry<Long, List<Traversal>> entry : mutable.entrySet()) {
+            entry.getValue().sort(Comparator.comparingLong(Traversal::destinationNodeId)
+                    .thenComparingLong(traversal -> traversal.edge().id()));
             immutable.put(entry.getKey(), List.copyOf(entry.getValue()));
         }
         return Map.copyOf(immutable);

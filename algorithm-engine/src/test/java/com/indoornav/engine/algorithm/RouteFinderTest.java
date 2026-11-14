@@ -15,6 +15,7 @@ import com.indoornav.engine.model.RouteRequest;
 import com.indoornav.engine.result.RouteResult;
 import com.indoornav.engine.result.RouteStatus;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -221,6 +222,33 @@ class RouteFinderTest {
                         TOLERANCE);
             }
         }
+    }
+
+    @Test
+    void equalCostRoutesUseTheSameStablePathRegardlessOfInputEdgeOrder() {
+        List<NavigationNode> nodes = List.of(
+                node(1, 1, 0, 0, true),
+                node(2, 1, 1, 0, true),
+                node(3, 1, 0, 1, true),
+                node(4, 1, 1, 1, true));
+        List<NavigationEdge> edges = List.of(
+                edge(20, 1, 2, 1, ConnectionType.CORRIDOR, true, true),
+                edge(21, 2, 4, 1, ConnectionType.CORRIDOR, true, true),
+                edge(10, 1, 3, 1, ConnectionType.CORRIDOR, true, true),
+                edge(11, 3, 4, 1, ConnectionType.CORRIDOR, true, true));
+        List<NavigationEdge> reversedEdges = new ArrayList<>(edges);
+        Collections.reverse(reversedEdges);
+        RouteRequest request = RouteRequest.of(1, 4, RoutePreference.SHORTEST);
+
+        RouteResult firstAStar = aStar.findRoute(graph(nodes, edges), request, costs());
+        RouteResult secondAStar = aStar.findRoute(graph(nodes, reversedEdges), request, costs());
+        RouteResult firstDijkstra = dijkstra.findRoute(graph(nodes, edges), request, costs());
+        RouteResult secondDijkstra = dijkstra.findRoute(graph(nodes, reversedEdges), request, costs());
+
+        assertEquals(List.of(20L, 21L), firstAStar.edgeIds());
+        assertEquals(firstAStar.edgeIds(), secondAStar.edgeIds());
+        assertEquals(firstDijkstra.edgeIds(), secondDijkstra.edgeIds());
+        assertEquals(firstAStar.edgeIds(), firstDijkstra.edgeIds());
     }
 
     private NavigationGraph graph(List<NavigationNode> nodes, List<NavigationEdge> edges) {

@@ -22,7 +22,8 @@ public final class DijkstraRouteFinder extends AbstractRouteFinder {
         }
         Map<Long, Double> costs = new HashMap<>();
         Map<Long, PreviousStep> previousSteps = new HashMap<>();
-        PriorityQueue<QueueEntry> queue = new PriorityQueue<>(Comparator.comparingDouble(QueueEntry::cost));
+        PriorityQueue<QueueEntry> queue = new PriorityQueue<>(Comparator.comparingDouble(QueueEntry::cost)
+                .thenComparingLong(QueueEntry::nodeId));
         costs.put(request.startNodeId(), 0.0);
         queue.add(new QueueEntry(request.startNodeId(), 0.0));
 
