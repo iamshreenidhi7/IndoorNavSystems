@@ -3,8 +3,13 @@ package com.indoornav.backend.database;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.io.InputStream;
+import java.math.BigDecimal;
 import java.util.List;
+import javax.xml.XMLConstants;
+import javax.xml.parsers.DocumentBuilderFactory;
 import org.junit.jupiter.api.Test;
+import org.w3c.dom.Element;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -127,6 +132,30 @@ class DatabaseIntegrityTest {
     }
 
     @Test
+    void packagedFloorPlansMatchTheDimensionsStoredForEachFloor() throws Exception {
+        List<FloorPlanDimensions> floors = jdbcTemplate.query(
+                "select plan_asset_path, plan_width, plan_height from floors order by id",
+                (resultSet, rowNumber) -> new FloorPlanDimensions(
+                        resultSet.getString("plan_asset_path"),
+                        resultSet.getBigDecimal("plan_width"),
+                        resultSet.getBigDecimal("plan_height")));
+
+        for (FloorPlanDimensions floor : floors) {
+            try (InputStream asset = getClass().getClassLoader().getResourceAsStream("floorplans/" + floor.path())) {
+                assertThat(asset).as("floor-plan asset %s", floor.path()).isNotNull();
+
+                Element svg = secureDocumentBuilderFactory()
+                        .newDocumentBuilder()
+                        .parse(asset)
+                        .getDocumentElement();
+                assertThat(svg.getTagName()).isEqualTo("svg");
+                assertThat(new BigDecimal(svg.getAttribute("width"))).isEqualByComparingTo(floor.width());
+                assertThat(new BigDecimal(svg.getAttribute("height"))).isEqualByComparingTo(floor.height());
+            }
+        }
+    }
+
+    @Test
     void seedGraphContainsTheStructuresForAllFiveDemonstrationScenarios() {
         assertThat(jdbcTemplate.queryForObject(
                         "select count(*) from edges where from_node_id = ? or to_node_id = ?",
@@ -204,4 +233,14 @@ class DatabaseIntegrityTest {
         Long value = jdbcTemplate.queryForObject("select count(*) from " + fromClause, Long.class);
         return value == null ? 0L : value;
     }
+
+    private static DocumentBuilderFactory secureDocumentBuilderFactory() throws Exception {
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
+        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+        factory.setExpandEntityReferences(false);
+        return factory;
+    }
+
+    private record FloorPlanDimensions(String path, BigDecimal width, BigDecimal height) {}
 }
