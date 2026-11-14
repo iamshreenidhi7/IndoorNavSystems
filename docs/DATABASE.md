@@ -315,7 +315,7 @@ Rules that need joins across tables are checked by tests because graph data chan
 
 Owned by Person 4, run in CI against the seeded database (ARCHITECTURE.md 7.6). It verifies every "Test" row above, that every demonstration scenario in Section 12.2 behaves as specified, and that the whole migration chain applies to an empty database and passes Hibernate's schema validation.
 
-The executable suite is `DatabaseIntegrityTest` in the backend test source set. It uses a fresh PostgreSQL 17 Testcontainers instance, enables both repeatable seeds, and verifies the schema, seed counts, graph invariants, scenario structures and representative database constraints.
+The executable suite is `DatabaseIntegrityTest` in the backend test source set. It uses a fresh PostgreSQL 17 Testcontainers instance, enables both repeatable seeds, and verifies the schema, seed counts, graph invariants, packaged SVG dimensions, scenario structures and representative database constraints.
 
 ---
 
