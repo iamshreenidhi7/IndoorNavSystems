@@ -22,6 +22,8 @@ class FoundRoute extends RouteOutcome {
     required super.preference,
     required this.distanceMeters,
     required this.estimatedDurationSeconds,
+    required this.pathNodes,
+    required this.floorTransitions,
     required this.instructions,
     required this.warnings,
   });
@@ -34,6 +36,14 @@ class FoundRoute extends RouteOutcome {
       preference: preference,
       distanceMeters: _requiredNumber(json, 'distanceMeters'),
       estimatedDurationSeconds: _requiredInt(json, 'estimatedDurationSeconds'),
+      pathNodes: _objectList(
+        json,
+        'pathNodes',
+      ).map(RoutePathNode.fromJson).toList(growable: false),
+      floorTransitions: _objectList(
+        json,
+        'floorTransitions',
+      ).map(FloorTransition.fromJson).toList(growable: false),
       instructions: _objectList(
         json,
         'instructions',
@@ -47,6 +57,8 @@ class FoundRoute extends RouteOutcome {
 
   final double distanceMeters;
   final int estimatedDurationSeconds;
+  final List<RoutePathNode> pathNodes;
+  final List<FloorTransition> floorTransitions;
   final List<RouteInstruction> instructions;
   final List<RouteWarning> warnings;
 }
@@ -68,18 +80,67 @@ class NoRouteOutcome extends RouteOutcome {
   final String message;
 }
 
+class RoutePathNode {
+  const RoutePathNode({
+    required this.nodeId,
+    required this.floorId,
+    required this.x,
+    required this.y,
+  });
+
+  factory RoutePathNode.fromJson(Map<String, Object?> json) {
+    return RoutePathNode(
+      nodeId: _requiredInt(json, 'nodeId'),
+      floorId: _requiredInt(json, 'floorId'),
+      x: _requiredNumber(json, 'x'),
+      y: _requiredNumber(json, 'y'),
+    );
+  }
+
+  final int nodeId;
+  final int floorId;
+  final double x;
+  final double y;
+}
+
+class FloorTransition {
+  const FloorTransition({
+    required this.fromFloorId,
+    required this.toFloorId,
+    required this.connectionType,
+  });
+
+  factory FloorTransition.fromJson(Map<String, Object?> json) {
+    return FloorTransition(
+      fromFloorId: _requiredInt(json, 'fromFloorId'),
+      toFloorId: _requiredInt(json, 'toFloorId'),
+      connectionType: _requiredString(json, 'connectionType'),
+    );
+  }
+
+  final int fromFloorId;
+  final int toFloorId;
+  final String connectionType;
+}
+
 class RouteInstruction {
-  const RouteInstruction({required this.type, required this.text});
+  const RouteInstruction({
+    required this.type,
+    required this.text,
+    required this.distanceMeters,
+  });
 
   factory RouteInstruction.fromJson(Map<String, Object?> json) {
     return RouteInstruction(
       type: _requiredString(json, 'type'),
       text: _requiredString(json, 'text'),
+      distanceMeters: _optionalNumber(json, 'distanceMeters'),
     );
   }
 
   final String type;
   final String text;
+  final double? distanceMeters;
 }
 
 class RouteWarning {
@@ -143,6 +204,17 @@ double _requiredNumber(Map<String, Object?> json, String key) {
     throw FormatException('$key must be a number.');
   }
   return value.toDouble();
+}
+
+double? _optionalNumber(Map<String, Object?> json, String key) {
+  final value = json[key];
+  if (value == null) {
+    return null;
+  }
+  if (value is num) {
+    return value.toDouble();
+  }
+  throw FormatException('$key must be a number when present.');
 }
 
 String _requiredString(Map<String, Object?> json, String key) {

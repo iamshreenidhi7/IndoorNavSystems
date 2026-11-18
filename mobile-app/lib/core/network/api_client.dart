@@ -4,13 +4,26 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/app_config.dart';
 import '../errors/app_failure.dart';
 
+final adminTokenProvider = NotifierProvider<AdminTokenNotifier, String?>(
+  AdminTokenNotifier.new,
+);
+
+class AdminTokenNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void setToken(String token) => state = token;
+
+  void clear() => state = null;
+}
+
 final appConfigProvider = Provider<AppConfig>((ref) {
   return AppConfig.fromEnvironment();
 });
 
 final dioProvider = Provider<Dio>((ref) {
   final config = ref.watch(appConfigProvider);
-  return Dio(
+  final client = Dio(
     BaseOptions(
       baseUrl: config.apiBaseUrl,
       connectTimeout: const Duration(seconds: 5),
@@ -18,6 +31,18 @@ final dioProvider = Provider<Dio>((ref) {
       responseType: ResponseType.json,
     ),
   );
+  client.interceptors.add(
+    InterceptorsWrapper(
+      onRequest: (options, handler) {
+        final token = ref.read(adminTokenProvider);
+        if (token != null) {
+          options.headers['Authorization'] = 'Bearer $token';
+        }
+        handler.next(options);
+      },
+    ),
+  );
+  return client;
 });
 
 final apiClientProvider = Provider<ApiClient>((ref) {
@@ -110,6 +135,28 @@ class ApiClient {
       throw _failureFor(error);
     } on FormatException {
       throw const InvalidResponseFailure();
+    }
+  }
+
+  Future<Map<String, Object?>> putObject(
+    String path, {
+    required Map<String, Object?> data,
+  }) async {
+    try {
+      final response = await _dio.put<Object?>(path, data: data);
+      return _asObjectMap(response.data);
+    } on DioException catch (error) {
+      throw _failureFor(error);
+    } on FormatException {
+      throw const InvalidResponseFailure();
+    }
+  }
+
+  Future<void> delete(String path) async {
+    try {
+      await _dio.delete<void>(path);
+    } on DioException catch (error) {
+      throw _failureFor(error);
     }
   }
 

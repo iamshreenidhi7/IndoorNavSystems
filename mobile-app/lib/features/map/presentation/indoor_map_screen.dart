@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/network/api_client.dart';
 import '../../../core/widgets/full_state_view.dart';
 import '../../floors/domain/floor.dart';
 import '../../routing/domain/route_outcome.dart';
@@ -47,6 +48,8 @@ class _IndoorMapScreenState extends ConsumerState<IndoorMapScreen> {
         :final route,
         :final routeFailure,
         :final isCalculating,
+        :final isNavigating,
+        :final currentInstructionIndex,
       ) =>
         _MapShell(
           buildingName: building.name,
@@ -59,6 +62,8 @@ class _IndoorMapScreenState extends ConsumerState<IndoorMapScreen> {
           route: route,
           routeFailureMessage: routeFailure?.message,
           isCalculating: isCalculating,
+          isNavigating: isNavigating,
+          currentInstructionIndex: currentInstructionIndex,
         ),
       MapSessionFailure(:final failure) => Scaffold(
         body: FullStateView(
@@ -87,6 +92,8 @@ class _MapShell extends ConsumerWidget {
     required this.route,
     required this.routeFailureMessage,
     required this.isCalculating,
+    required this.isNavigating,
+    required this.currentInstructionIndex,
   });
 
   final String buildingName;
@@ -99,6 +106,8 @@ class _MapShell extends ConsumerWidget {
   final RouteOutcome? route;
   final String? routeFailureMessage;
   final bool isCalculating;
+  final bool isNavigating;
+  final int currentInstructionIndex;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -107,7 +116,15 @@ class _MapShell extends ConsumerWidget {
     return Scaffold(
       body: Stack(
         children: <Widget>[
-          Positioned.fill(child: _MapCanvas(floorMap: floorMap)),
+          Positioned.fill(
+            child: _MapCanvas(
+              floorMap: floorMap,
+              route: switch (route) {
+                final FoundRoute found => found,
+                _ => null,
+              },
+            ),
+          ),
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.all(AppSpacing.x2),
@@ -141,6 +158,19 @@ class _MapShell extends ConsumerWidget {
                       ),
                     ),
                   ),
+                  if (ref.watch(adminTokenProvider) != null) ...<Widget>[
+                    const SizedBox(width: AppSpacing.x2),
+                    Material(
+                      color: AppColors.surface,
+                      shape: const CircleBorder(),
+                      child: IconButton(
+                        tooltip: 'Manage blocked connections',
+                        onPressed: () =>
+                            context.push('/buildings/$buildingId/obstacles'),
+                        icon: const Icon(Icons.admin_panel_settings_outlined),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -263,8 +293,31 @@ class _MapShell extends ConsumerWidget {
                     ],
                     if (route case final FoundRoute found) ...<Widget>[
                       const SizedBox(height: AppSpacing.x2),
+                      if (found.floorTransitions.isNotEmpty)
+                        _TransitionSummary(transitions: found.floorTransitions),
                       for (final warning in found.warnings)
-                        Text(warning.message),
+                        Semantics(
+                          liveRegion: true,
+                          child: Container(
+                            margin: const EdgeInsets.only(top: AppSpacing.x2),
+                            padding: const EdgeInsets.all(AppSpacing.x2),
+                            color: AppColors.surfaceVariant,
+                            child: Text(warning.message),
+                          ),
+                        ),
+                      const SizedBox(height: AppSpacing.x2),
+                      if (isNavigating)
+                        _NavigationControls(
+                          route: found,
+                          currentInstructionIndex: currentInstructionIndex,
+                        )
+                      else
+                        FilledButton(
+                          onPressed: () => ref
+                              .read(mapSessionProvider.notifier)
+                              .startNavigation(),
+                          child: const Text('Start navigation'),
+                        ),
                     ],
                   ],
                 ),
@@ -352,9 +405,10 @@ class _PanelHeading extends StatelessWidget {
 }
 
 class _MapCanvas extends StatelessWidget {
-  const _MapCanvas({required this.floorMap});
+  const _MapCanvas({required this.floorMap, required this.route});
 
   final FloorMap floorMap;
+  final FoundRoute? route;
 
   @override
   Widget build(BuildContext context) {
@@ -376,7 +430,10 @@ class _MapCanvas extends StatelessWidget {
               CustomPaint(
                 painter: _MarkerPainter(
                   nodes: floorMap.nodes,
+                  edges: floorMap.edges,
                   pointsOfInterest: floorMap.pointsOfInterest,
+                  floorId: floorMap.floor.id,
+                  route: route,
                 ),
               ),
             ],
@@ -388,15 +445,70 @@ class _MapCanvas extends StatelessWidget {
 }
 
 class _MarkerPainter extends CustomPainter {
-  const _MarkerPainter({required this.nodes, required this.pointsOfInterest});
+  const _MarkerPainter({
+    required this.nodes,
+    required this.edges,
+    required this.pointsOfInterest,
+    required this.floorId,
+    required this.route,
+  });
 
   final List<MapNode> nodes;
+  final List<MapEdge> edges;
   final List<MapPointOfInterest> pointsOfInterest;
+  final int floorId;
+  final FoundRoute? route;
 
   @override
   void paint(Canvas canvas, Size size) {
     final nodesById = <int, MapNode>{for (final node in nodes) node.id: node};
     final markerPaint = Paint()..color = AppColors.primary;
+    final blockedPaint = Paint()
+      ..color = AppColors.error
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4;
+    for (final edge in edges.where((edge) => edge.blocked)) {
+      final from = nodesById[edge.fromNodeId];
+      final to = nodesById[edge.toNodeId];
+      if (from == null || to == null) continue;
+      canvas.drawLine(Offset(from.x, from.y), Offset(to.x, to.y), blockedPaint);
+      final midpoint = Offset((from.x + to.x) / 2, (from.y + to.y) / 2);
+      canvas.drawCircle(midpoint, 12, blockedPaint..style = PaintingStyle.fill);
+      blockedPaint.style = PaintingStyle.stroke;
+    }
+    final routePaint = Paint()
+      ..color = const Color(0xFFD9480F)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 6
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    final routeCasingPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 10
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    final floorNodes =
+        route?.pathNodes
+            .where((node) => node.floorId == floorId)
+            .toList(growable: false) ??
+        const <RoutePathNode>[];
+    if (floorNodes.length > 1) {
+      final path = Path()..moveTo(floorNodes.first.x, floorNodes.first.y);
+      for (final node in floorNodes.skip(1)) {
+        path.lineTo(node.x, node.y);
+      }
+      canvas.drawPath(path, routeCasingPaint);
+      canvas.drawPath(path, routePaint);
+    }
+    if (floorNodes.isNotEmpty) {
+      final start = floorNodes.first;
+      final end = floorNodes.last;
+      final startPaint = Paint()..color = AppColors.primary;
+      final destinationPaint = Paint()..color = const Color(0xFFD9480F);
+      canvas.drawCircle(Offset(start.x, start.y), 16, startPaint);
+      canvas.drawCircle(Offset(end.x, end.y), 20, destinationPaint);
+    }
     for (final point in pointsOfInterest) {
       final node = nodesById[point.nodeId];
       if (node == null) {
@@ -409,6 +521,83 @@ class _MarkerPainter extends CustomPainter {
   @override
   bool shouldRepaint(_MarkerPainter oldDelegate) {
     return oldDelegate.nodes != nodes ||
-        oldDelegate.pointsOfInterest != pointsOfInterest;
+        oldDelegate.pointsOfInterest != pointsOfInterest ||
+        oldDelegate.edges != edges ||
+        oldDelegate.floorId != floorId ||
+        oldDelegate.route != route;
+  }
+}
+
+class _NavigationControls extends ConsumerWidget {
+  const _NavigationControls({
+    required this.route,
+    required this.currentInstructionIndex,
+  });
+
+  final FoundRoute route;
+  final int currentInstructionIndex;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final current = route.instructions[currentInstructionIndex];
+    final isFirst = currentInstructionIndex == 0;
+    final isLast = currentInstructionIndex == route.instructions.length - 1;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(current.text, style: Theme.of(context).textTheme.titleMedium),
+        if (current.distanceMeters case final distance?)
+          Text('${distance.toStringAsFixed(0)} m'),
+        const SizedBox(height: AppSpacing.x2),
+        Row(
+          children: <Widget>[
+            OutlinedButton(
+              onPressed: isFirst
+                  ? null
+                  : () => ref
+                        .read(mapSessionProvider.notifier)
+                        .moveInstruction(-1),
+              child: const Text('Previous'),
+            ),
+            const SizedBox(width: AppSpacing.x2),
+            FilledButton(
+              onPressed: isLast
+                  ? null
+                  : () => ref
+                        .read(mapSessionProvider.notifier)
+                        .moveInstruction(1),
+              child: const Text('Next'),
+            ),
+            const SizedBox(width: AppSpacing.x2),
+            TextButton(
+              onPressed: () =>
+                  ref.read(mapSessionProvider.notifier).endNavigation(),
+              child: const Text('End navigation'),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _TransitionSummary extends StatelessWidget {
+  const _TransitionSummary({required this.transitions});
+
+  final List<FloorTransition> transitions;
+
+  @override
+  Widget build(BuildContext context) {
+    final transition = transitions.first;
+    return Semantics(
+      label:
+          '${transition.connectionType.toLowerCase()} from floor ${transition.fromFloorId} to floor ${transition.toFloorId}',
+      child: Chip(
+        avatar: const Icon(Icons.stairs_outlined),
+        label: Text(
+          '${transition.connectionType.toLowerCase()} to floor ${transition.toFloorId}',
+        ),
+      ),
+    );
   }
 }
