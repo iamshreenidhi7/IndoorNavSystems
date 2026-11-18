@@ -20,6 +20,16 @@ void main() {
         'nodes': <Object?>[
           <String, Object?>{'id': 10, 'x': 20, 'y': 30},
         ],
+        'edges': <Object?>[
+          <String, Object?>{
+            'fromNodeId': 10,
+            'toNodeId': 11,
+            'blocked': true,
+            'obstacle': <String, Object?>{
+              'description': 'Closed for cleaning.',
+            },
+          },
+        ],
         'pointsOfInterest': <Object?>[
           <String, Object?>{'id': 4, 'name': 'Information', 'nodeId': 10},
         ],
@@ -30,6 +40,8 @@ void main() {
     expect(floorMap.plan.width, 100);
     expect(floorMap.nodes.single.x, 20);
     expect(floorMap.pointsOfInterest.single.nodeId, 10);
+    expect(floorMap.edges.single.blocked, isTrue);
+    expect(floorMap.edges.single.obstacleDescription, 'Closed for cleaning.');
   });
 
   test('rejects a map with a non-numeric plan dimension', () {
@@ -49,6 +61,7 @@ void main() {
             'height': 80,
           },
           'nodes': <Object?>[],
+          'edges': <Object?>[],
           'pointsOfInterest': <Object?>[],
         },
       ),

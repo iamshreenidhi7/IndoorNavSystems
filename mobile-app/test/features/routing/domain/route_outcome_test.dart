@@ -9,9 +9,29 @@ void main() {
       'preference': 'FASTEST',
       'distanceMeters': 145.4,
       'estimatedDurationSeconds': 182,
+      'pathNodes': <Object?>[
+        <String, Object?>{'nodeId': 1, 'floorId': 2, 'x': 10.0, 'y': 20.0},
+        <String, Object?>{'nodeId': 2, 'floorId': 2, 'x': 40.0, 'y': 20.0},
+      ],
+      'floorTransitions': <Object?>[
+        <String, Object?>{
+          'fromFloorId': 2,
+          'toFloorId': 3,
+          'connectionType': 'ELEVATOR',
+          'pathIndex': 1,
+        },
+      ],
       'instructions': <Object?>[
-        <String, Object?>{'type': 'START', 'text': 'Start at the entrance.'},
-        <String, Object?>{'type': 'ARRIVE', 'text': 'Arrive at the desk.'},
+        <String, Object?>{
+          'type': 'START',
+          'text': 'Start at the entrance.',
+          'distanceMeters': null,
+        },
+        <String, Object?>{
+          'type': 'ARRIVE',
+          'text': 'Arrive at the desk.',
+          'distanceMeters': null,
+        },
       ],
       'warnings': <Object?>[
         <String, Object?>{'code': 'DETOUR', 'message': 'A corridor is closed.'},
@@ -22,6 +42,8 @@ void main() {
     final found = route as FoundRoute;
     expect(found.preference, RoutePreference.fastest);
     expect(found.distanceMeters, 145.4);
+    expect(found.pathNodes, hasLength(2));
+    expect(found.floorTransitions.single.connectionType, 'ELEVATOR');
     expect(found.instructions, hasLength(2));
     expect(found.warnings.single.message, 'A corridor is closed.');
   });

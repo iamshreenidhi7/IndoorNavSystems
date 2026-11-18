@@ -5,6 +5,7 @@ class FloorMap {
     required this.floor,
     required this.plan,
     required this.nodes,
+    required this.edges,
     required this.pointsOfInterest,
     required this.svgContent,
   });
@@ -20,6 +21,10 @@ class FloorMap {
         json,
         'nodes',
       ).map(MapNode.fromJson).toList(growable: false),
+      edges: _requiredList(
+        json,
+        'edges',
+      ).map(MapEdge.fromJson).toList(growable: false),
       pointsOfInterest: _requiredList(
         json,
         'pointsOfInterest',
@@ -31,6 +36,7 @@ class FloorMap {
   final Floor floor;
   final FloorPlan plan;
   final List<MapNode> nodes;
+  final List<MapEdge> edges;
   final List<MapPointOfInterest> pointsOfInterest;
   final String svgContent;
 
@@ -109,6 +115,35 @@ class MapNode {
   final int id;
   final double x;
   final double y;
+}
+
+class MapEdge {
+  const MapEdge({
+    required this.fromNodeId,
+    required this.toNodeId,
+    required this.blocked,
+    required this.obstacleDescription,
+  });
+
+  factory MapEdge.fromJson(Map<String, Object?> json) {
+    final obstacle = json['obstacle'];
+    String? description;
+    if (obstacle is Map<Object?, Object?> &&
+        obstacle['description'] is String) {
+      description = obstacle['description'] as String;
+    }
+    return MapEdge(
+      fromNodeId: _requiredInt(json, 'fromNodeId'),
+      toNodeId: _requiredInt(json, 'toNodeId'),
+      blocked: json['blocked'] is bool ? json['blocked'] as bool : false,
+      obstacleDescription: description,
+    );
+  }
+
+  final int fromNodeId;
+  final int toNodeId;
+  final bool blocked;
+  final String? obstacleDescription;
 }
 
 class MapPointOfInterest {

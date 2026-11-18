@@ -11,6 +11,7 @@ import '../../search/domain/start_location.dart';
 import '../../routing/data/route_repository.dart';
 import '../../routing/domain/route_outcome.dart';
 import '../../routing/domain/route_preference.dart';
+import '../../settings/data/settings_repository.dart';
 import '../data/floor_map_repository.dart';
 import '../domain/floor_map.dart';
 
@@ -42,7 +43,18 @@ class MapSessionNotifier extends Notifier<MapSessionState> {
           state = const MapSessionFailure(InvalidResponseFailure());
           return;
         }
-        await _loadFloor(building, floors, defaultFloor);
+        final settings = ref.read(settingsRepositoryProvider);
+        await settings.saveLastBuilding(buildingId);
+        final accessible = await settings.accessibleRoutes();
+        final preference = accessible
+            ? RoutePreference.accessible
+            : await settings.preference();
+        await _loadFloor(
+          building,
+          floors,
+          defaultFloor,
+          preference: preference,
+        );
       case (Failure<BuildingDetail>(error: final error), _):
         state = MapSessionFailure(_asFailure(error));
       case (_, Failure<List<Floor>>(error: final error)):
@@ -66,6 +78,8 @@ class MapSessionNotifier extends Notifier<MapSessionState> {
       destination: current.destination,
       start: current.start,
       preference: current.preference,
+      isNavigating: current.isNavigating,
+      currentInstructionIndex: current.currentInstructionIndex,
       route: current.route,
     );
   }
@@ -82,6 +96,8 @@ class MapSessionNotifier extends Notifier<MapSessionState> {
       destination: destination,
       start: current.start,
       preference: current.preference,
+      isNavigating: current.isNavigating,
+      currentInstructionIndex: current.currentInstructionIndex,
     );
   }
 
@@ -113,6 +129,7 @@ class MapSessionNotifier extends Notifier<MapSessionState> {
       start: current.start,
       preference: preference,
     );
+    await ref.read(settingsRepositoryProvider).savePreference(preference);
     if (current.start != null && current.destination != null) {
       await calculateRoute();
     }
@@ -164,6 +181,65 @@ class MapSessionNotifier extends Notifier<MapSessionState> {
     };
   }
 
+  void startNavigation() {
+    final current = state;
+    if (current is! MapSessionReady || current.route is! FoundRoute) {
+      return;
+    }
+    state = MapSessionReady(
+      building: current.building,
+      floors: current.floors,
+      floorMap: current.floorMap,
+      destination: current.destination,
+      start: current.start,
+      preference: current.preference,
+      route: current.route,
+      isNavigating: true,
+    );
+  }
+
+  void moveInstruction(int direction) {
+    final current = state;
+    if (current is! MapSessionReady || current.route is! FoundRoute) {
+      return;
+    }
+    final route = current.route;
+    if (route is! FoundRoute) {
+      return;
+    }
+    final nextIndex = (current.currentInstructionIndex + direction).clamp(
+      0,
+      route.instructions.length - 1,
+    );
+    state = MapSessionReady(
+      building: current.building,
+      floors: current.floors,
+      floorMap: current.floorMap,
+      destination: current.destination,
+      start: current.start,
+      preference: current.preference,
+      route: route,
+      isNavigating: true,
+      currentInstructionIndex: nextIndex,
+    );
+  }
+
+  void endNavigation() {
+    final current = state;
+    if (current is! MapSessionReady) {
+      return;
+    }
+    state = MapSessionReady(
+      building: current.building,
+      floors: current.floors,
+      floorMap: current.floorMap,
+      destination: current.destination,
+      start: current.start,
+      preference: current.preference,
+      route: current.route,
+    );
+  }
+
   Future<void> _loadFloor(
     BuildingDetail building,
     List<Floor> floors,
@@ -172,6 +248,8 @@ class MapSessionNotifier extends Notifier<MapSessionState> {
     StartLocation? start,
     RoutePreference preference = RoutePreference.shortest,
     RouteOutcome? route,
+    bool isNavigating = false,
+    int currentInstructionIndex = 0,
   }) async {
     state = const MapSessionLoading();
     final mapResult = await ref
@@ -186,6 +264,8 @@ class MapSessionNotifier extends Notifier<MapSessionState> {
         start: start,
         preference: preference,
         route: route,
+        isNavigating: isNavigating,
+        currentInstructionIndex: currentInstructionIndex,
       ),
       Failure<FloorMap>(error: final error) => MapSessionFailure(
         _asFailure(error),
@@ -226,6 +306,8 @@ class MapSessionReady extends MapSessionState {
     this.route,
     this.routeFailure,
     this.isCalculating = false,
+    this.isNavigating = false,
+    this.currentInstructionIndex = 0,
   });
 
   final BuildingDetail building;
@@ -237,6 +319,8 @@ class MapSessionReady extends MapSessionState {
   final RouteOutcome? route;
   final AppFailure? routeFailure;
   final bool isCalculating;
+  final bool isNavigating;
+  final int currentInstructionIndex;
 }
 
 class MapSessionFailure extends MapSessionState {
