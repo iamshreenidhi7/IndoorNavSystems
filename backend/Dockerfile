@@ -1,6 +1,6 @@
 # Build the complete Maven reactor because backend depends on the algorithm engine.
 # The build image must include Maven; a JDK-only image cannot run the Maven commands below.
-FROM maven:3.9.16-eclipse-temurin-21 AS build
+FROM maven:3.9-eclipse-temurin-26 AS build
 
 WORKDIR /workspace
 COPY pom.xml ./
