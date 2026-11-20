@@ -13,7 +13,7 @@ COPY backend backend
 COPY database database
 RUN mvn --batch-mode --no-transfer-progress package -DskipTests -pl backend -am
 
-FROM eclipse-temurin:21.0.13_9-jre
+FROM eclipse-temurin:24.0.2_12-jre
 
 RUN groupadd --system app && useradd --system --gid app --create-home app
 WORKDIR /app
