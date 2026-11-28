@@ -21,6 +21,8 @@ final mapSessionProvider =
     );
 
 class MapSessionNotifier extends Notifier<MapSessionState> {
+  int _routeRequestGeneration = 0;
+
   @override
   MapSessionState build() => const MapSessionLoading();
 
@@ -143,6 +145,7 @@ class MapSessionNotifier extends Notifier<MapSessionState> {
         current.isCalculating) {
       return;
     }
+    final requestGeneration = ++_routeRequestGeneration;
     state = MapSessionReady(
       building: current.building,
       floors: current.floors,
@@ -159,6 +162,9 @@ class MapSessionNotifier extends Notifier<MapSessionState> {
           destinationNodeId: current.destination!.nodeId,
           preference: current.preference,
         );
+    if (requestGeneration != _routeRequestGeneration) {
+      return;
+    }
     state = switch (result) {
       Success<RouteOutcome>(value: final route) => MapSessionReady(
         building: current.building,
@@ -179,6 +185,26 @@ class MapSessionNotifier extends Notifier<MapSessionState> {
         routeFailure: _asFailure(error),
       ),
     };
+  }
+
+  void cancelRoute() {
+    final current = state;
+    if (current is! MapSessionReady || !current.isCalculating) {
+      return;
+    }
+    _routeRequestGeneration++;
+    ref.read(routeRepositoryProvider).cancelActiveRoute();
+    state = MapSessionReady(
+      building: current.building,
+      floors: current.floors,
+      floorMap: current.floorMap,
+      destination: current.destination,
+      start: current.start,
+      preference: current.preference,
+      route: current.route,
+      isNavigating: current.isNavigating,
+      currentInstructionIndex: current.currentInstructionIndex,
+    );
   }
 
   void startNavigation() {

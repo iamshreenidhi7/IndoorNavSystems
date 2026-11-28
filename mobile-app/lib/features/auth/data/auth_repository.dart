@@ -28,7 +28,11 @@ class AuthRepository {
       }
       return Success(token);
     } on AppFailure catch (failure) {
-      return Failure(failure);
+      return Failure(
+        failure is UnauthorizedFailure
+            ? const InvalidCredentialsFailure()
+            : failure,
+      );
     }
   }
 }

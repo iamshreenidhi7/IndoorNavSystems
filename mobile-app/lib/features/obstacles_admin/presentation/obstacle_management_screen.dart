@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/errors/app_failure.dart';
 import '../../../core/errors/result.dart';
@@ -72,8 +73,10 @@ class _ObstacleManagementScreenState
         icon: Icons.cloud_off_outlined,
         title: failure.title,
         message: failure.message,
-        primaryAction: _load,
-        primaryActionLabel: 'Retry',
+        primaryAction: failure is UnauthorizedFailure
+            ? () => context.go('/admin/login')
+            : _load,
+        primaryActionLabel: failure is UnauthorizedFailure ? 'Sign in' : 'Retry',
       );
     }
     if (_obstacles.isEmpty) {
@@ -162,6 +165,7 @@ class _ObstacleFormState extends ConsumerState<_ObstacleForm> {
   String _obstacleType = 'BLOCKED_CORRIDOR';
   String _status = 'ACTIVE';
   bool _submitting = false;
+  AppFailure? _failure;
 
   @override
   void initState() {
@@ -205,6 +209,13 @@ class _ObstacleFormState extends ConsumerState<_ObstacleForm> {
                   editing ? 'Edit obstacle' : 'Add obstacle',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
+                if (_failure case final failure?) ...<Widget>[
+                  const SizedBox(height: 8),
+                  Text(
+                    '${failure.title}: ${failure.message}',
+                    style: TextStyle(color: Theme.of(context).colorScheme.error),
+                  ),
+                ],
                 const SizedBox(height: 16),
                 if (!editing)
                   DropdownButtonFormField<String>(
@@ -310,7 +321,10 @@ class _ObstacleFormState extends ConsumerState<_ObstacleForm> {
 
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    setState(() => _submitting = true);
+    setState(() {
+      _submitting = true;
+      _failure = null;
+    });
     final existing = widget.obstacle;
     final result = existing == null
         ? await ref
@@ -338,7 +352,12 @@ class _ObstacleFormState extends ConsumerState<_ObstacleForm> {
               );
     if (!mounted) return;
     if (result is Success<AdminObstacle>) Navigator.of(context).pop(true);
-    if (result is Failure<AdminObstacle>) setState(() => _submitting = false);
+    if (result case Failure<AdminObstacle>(error: final error)) {
+      setState(() {
+        _submitting = false;
+        _failure = error is AppFailure ? error : const InvalidResponseFailure();
+      });
+    }
   }
 
   Future<void> _delete() async {
@@ -362,13 +381,21 @@ class _ObstacleFormState extends ConsumerState<_ObstacleForm> {
       ),
     );
     if (confirmed != true) return;
-    setState(() => _submitting = true);
+    setState(() {
+      _submitting = true;
+      _failure = null;
+    });
     final result = await ref
         .read(obstacleRepositoryProvider)
         .delete(existing.id);
     if (!mounted) return;
     if (result is Success<void>) Navigator.of(context).pop(true);
-    if (result is Failure<void>) setState(() => _submitting = false);
+    if (result case Failure<void>(error: final error)) {
+      setState(() {
+        _submitting = false;
+        _failure = error is AppFailure ? error : const InvalidResponseFailure();
+      });
+    }
   }
 }
 
