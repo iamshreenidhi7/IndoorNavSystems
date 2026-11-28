@@ -31,7 +31,7 @@ The IDs below are stable seed references, not visitor-facing values.
 |---|---|---|
 | S1: blocked edge detour | Route through the Sample Mall ground floor, then create an active obstacle on edge `2123`. | A different, longer route remains available through the loop. |
 | S2: shortest versus fastest | Route from ground-floor stairs node `1005` to level-one stairs node `1105`, comparing `SHORTEST` and `FASTEST`. | The shortest route uses stairs; the fastest route uses the elevator alternative. |
-| S3: accessible differs | Use the same cross-floor pair with `SHORTEST` and `ACCESSIBLE`. | Accessible routing excludes the non-accessible stairs and uses the elevator. |
+| S3: accessible differs | Route from step-free ground node `1001` to step-free level-one node `1102`, comparing `SHORTEST` and `ACCESSIBLE`. | The shortest route uses stairs; accessible routing excludes the non-accessible stair landings and uses the elevator. |
 | S4: broken elevator | Create active obstacles on elevator edges `2002` and `2004`; request an accessible route from ground to level two. | Accessible routing returns no route; shortest routing can still use stairs. |
 | S5: unreachable destination | Create an active obstacle on edge `2120`, the only connection to node `1020`. | Quiet corner is unreachable and the result is a normal no-route response. |
 
