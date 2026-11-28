@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/app_failure.dart';
@@ -14,12 +15,16 @@ class RouteRepository {
   RouteRepository(this._apiClient);
 
   final ApiClient _apiClient;
+  CancelToken? _activeRouteRequest;
 
   Future<Result<RouteOutcome>> calculateRoute({
     required int startNodeId,
     required int destinationNodeId,
     required RoutePreference preference,
   }) async {
+    final cancelToken = CancelToken();
+    _activeRouteRequest?.cancel();
+    _activeRouteRequest = cancelToken;
     try {
       final data = await _apiClient.postObject(
         '/api/navigation/route',
@@ -28,12 +33,20 @@ class RouteRepository {
           'destinationNodeId': destinationNodeId,
           'preference': preference.code,
         },
+        receiveTimeout: const Duration(seconds: 15),
+        cancelToken: cancelToken,
       );
       return Success(RouteOutcome.fromJson(data));
     } on AppFailure catch (failure) {
       return Failure(failure);
     } on FormatException {
       return const Failure(InvalidResponseFailure());
+    } finally {
+      if (identical(_activeRouteRequest, cancelToken)) {
+        _activeRouteRequest = null;
+      }
     }
   }
+
+  void cancelActiveRoute() => _activeRouteRequest?.cancel();
 }

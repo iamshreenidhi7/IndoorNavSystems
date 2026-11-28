@@ -282,6 +282,13 @@ class _MapShell extends ConsumerWidget {
                               )
                             : const Text('Get route'),
                       ),
+                      if (isCalculating)
+                        TextButton(
+                          onPressed: () => ref
+                              .read(mapSessionProvider.notifier)
+                              .cancelRoute(),
+                          child: const Text('Cancel route request'),
+                        ),
                     ],
                     if (routeFailureMessage case final message?) ...<Widget>[
                       const SizedBox(height: AppSpacing.x2),

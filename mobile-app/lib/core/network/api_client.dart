@@ -40,6 +40,12 @@ final dioProvider = Provider<Dio>((ref) {
         }
         handler.next(options);
       },
+      onError: (error, handler) {
+        if (error.response?.statusCode == 401) {
+          ref.read(adminTokenProvider.notifier).clear();
+        }
+        handler.next(error);
+      },
     ),
   );
   return client;
@@ -127,9 +133,18 @@ class ApiClient {
   Future<Map<String, Object?>> postObject(
     String path, {
     required Map<String, Object?> data,
+    Duration? receiveTimeout,
+    CancelToken? cancelToken,
   }) async {
     try {
-      final response = await _dio.post<Object?>(path, data: data);
+      final response = await _dio.post<Object?>(
+        path,
+        data: data,
+        options: receiveTimeout == null
+            ? null
+            : Options(receiveTimeout: receiveTimeout),
+        cancelToken: cancelToken,
+      );
       return _asObjectMap(response.data);
     } on DioException catch (error) {
       throw _failureFor(error);
@@ -180,8 +195,45 @@ class ApiClient {
       DioExceptionType.connectionTimeout ||
       DioExceptionType.sendTimeout ||
       DioExceptionType.receiveTimeout => const TimeoutFailure(),
+      DioExceptionType.cancel => const CancelledFailure(),
       DioExceptionType.connectionError => const ConnectionFailure(),
+      _ => AppFailureMapper.fromResponse(
+        statusCode: error.response?.statusCode,
+        body: error.response?.data,
+      ),
+    };
+  }
+}
+
+abstract final class AppFailureMapper {
+  static AppFailure fromResponse({int? statusCode, Object? body}) {
+    final code = _errorCode(body);
+    return switch (code) {
+      'VALIDATION_FAILED' ||
+      'MALFORMED_REQUEST' ||
+      'NODES_NOT_IN_SAME_BUILDING' => const ValidationFailure(),
+      'UNAUTHORIZED' => const UnauthorizedFailure(),
+      'RESOURCE_NOT_FOUND' => const NotFoundFailure(),
+      'CONFLICT' => const ConflictFailure(),
+      'TOO_MANY_REQUESTS' => const RateLimitedFailure(),
+      _ => fromStatus(statusCode),
+    };
+  }
+
+  static AppFailure fromStatus(int? statusCode) {
+    return switch (statusCode) {
+      400 => const ValidationFailure(),
+      401 => const UnauthorizedFailure(),
+      404 => const NotFoundFailure(),
+      409 => const ConflictFailure(),
+      429 => const RateLimitedFailure(),
       _ => const ServerFailure(),
     };
+  }
+
+  static String? _errorCode(Object? body) {
+    if (body is! Map<Object?, Object?>) return null;
+    final code = body['code'];
+    return code is String ? code : null;
   }
 }
