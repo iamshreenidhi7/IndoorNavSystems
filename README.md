@@ -34,6 +34,13 @@ GitHub Actions runs the same backend and engine test suite, builds the backend c
 validates the Compose configuration, and starts the complete stack through its database-backed
 health endpoint for changes to the application, database, container, or governing-contract files.
 
+### API collection
+
+Import [the Postman collection](backend/postman/indoor-navigation.postman_collection.json) and
+[the local environment](backend/postman/local.postman_environment.json) to exercise every API
+endpoint and the five seeded demonstration scenarios. Start the seeded local stack first, then
+follow the collection description; do not commit a real administrator password.
+
 To start the backend you need PostgreSQL and the migrations in `database/migrations`. Copy `.env.example` to `.env`, fill in the values and export them into your shell, then run:
 
 ```bash
